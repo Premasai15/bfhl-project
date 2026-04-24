@@ -25,10 +25,12 @@ async function analyze() {
     const data = raw.split(",").map(x => x.trim());
 
     const res = await fetch("https://bfhl-project-k7zl.onrender.com/bfhl", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data })
-    });
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ data })
+})
 
     const result = await res.json();
     lastResponse = result;
