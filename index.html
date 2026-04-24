@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BFHL Graph Analyzer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="topbar">
+    <h1>BFHL Graph Analyzer 🚀</h1>
+    <button class="toggle-btn" onclick="toggleTheme()">🌙</button>
+  </div>
+
+  <div class="card">
+    <textarea 
+  id="input" 
+  placeholder="Enter edges like: A->B, A->C, B->D, C->E"
+></textarea>
+    <button onclick="analyze()">Analyze Graph</button>
+    <div id="loader" class="loader hidden"></div>
+  </div>
+
+  <div id="stats" class="stats"></div>
+
+  <div id="treeView" class="card tree-view"></div>
+
+  <div class="card">
+    <h3>Graph Visualization</h3>
+    <svg id="graph"></svg>
+  </div>
+
+  <div class="card">
+    <button class="copy-btn" onclick="copyJSON()">Copy JSON</button>
+    <div id="output" class="output"></div>
+  </div>
+
+</div>
+
+</body>
+<script src="script.js"></script>
+</html>
