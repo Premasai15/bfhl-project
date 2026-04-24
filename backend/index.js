@@ -2,20 +2,29 @@ const express = require("express");
 const cors = require("cors");
 
 const app = express();
-app.use(cors());
+
+// ✅ CORS (safe for frontend on Netlify/Vercel)
+app.use(cors({
+  origin: "*"
+}));
+
 app.use(express.json());
 
-// DFS
-function dfs(node, graph, stack) {
-  if (stack.has(node)) return { cycle: true };
+/* =========================
+   DFS (safe version)
+========================= */
+function dfs(node, graph, visiting) {
+  if (visiting.has(node)) {
+    return { cycle: true };
+  }
 
-  stack.add(node);
+  visiting.add(node);
 
   let subtree = {};
   let maxDepth = 0;
 
   for (let child of (graph[node] || [])) {
-    let res = dfs(child, graph, stack);
+    const res = dfs(child, graph, visiting);
 
     if (res.cycle) return { cycle: true };
 
@@ -23,7 +32,7 @@ function dfs(node, graph, stack) {
     maxDepth = Math.max(maxDepth, res.depth);
   }
 
-  stack.delete(node);
+  visiting.delete(node);
 
   return {
     tree: subtree,
@@ -31,29 +40,37 @@ function dfs(node, graph, stack) {
   };
 }
 
-// Get component (forward + reverse)
+/* =========================
+   Get connected component
+========================= */
 function getComponent(start, graph) {
   const stack = [start];
   const comp = new Set();
 
   while (stack.length) {
-    let node = stack.pop();
+    const node = stack.pop();
     if (comp.has(node)) continue;
 
     comp.add(node);
 
-    for (let child of (graph[node] || [])) stack.push(child);
+    for (let child of (graph[node] || [])) {
+      stack.push(child);
+    }
 
     for (let parent in graph) {
-      if (graph[parent].includes(node)) stack.push(parent);
+      if (graph[parent].includes(node)) {
+        stack.push(parent);
+      }
     }
   }
 
   return comp;
 }
 
+/* =========================
+   MAIN API
+========================= */
 app.post("/bfhl", (req, res) => {
-    console.log("API HIT");  
   const data = req.body.data || [];
 
   const validEdges = [];
@@ -61,8 +78,9 @@ app.post("/bfhl", (req, res) => {
   const duplicateEdges = [];
   const seen = new Set();
 
+  // ✅ Validate edges
   for (let item of data) {
-    let str = item.trim();
+    const str = item.trim();
 
     if (!/^[A-Z]->[A-Z]$/.test(str) || str[0] === str[3]) {
       invalidEntries.push(item);
@@ -80,8 +98,10 @@ app.post("/bfhl", (req, res) => {
     validEdges.push(str);
   }
 
+  // Build graph
   const graph = {};
   const childSet = new Set();
+  const nodes = new Set();
 
   for (let edge of validEdges) {
     const [p, c] = edge.split("->");
@@ -90,23 +110,18 @@ app.post("/bfhl", (req, res) => {
     graph[p].push(c);
 
     childSet.add(c);
-  }
-
-  const nodes = new Set();
-  validEdges.forEach(e => {
-    const [p, c] = e.split("->");
     nodes.add(p);
     nodes.add(c);
-  });
+  }
 
+  let visited = new Set();
   let hierarchies = [];
   let totalTrees = 0;
   let totalCycles = 0;
   let maxDepth = 0;
   let largestRoot = "";
 
-  const visited = new Set();
-
+  // Process components
   for (let node of nodes) {
     if (visited.has(node)) continue;
 
@@ -115,10 +130,25 @@ app.post("/bfhl", (req, res) => {
 
     let roots = [...comp].filter(n => !childSet.has(n));
 
+    // Cycle case
     if (roots.length === 0) {
-      const root = [...comp].sort()[0];
+      const root = [...comp][0];
       totalCycles++;
 
+      hierarchies.push({
+        root,
+        tree: {},
+        has_cycle: true
+      });
+
+      continue;
+    }
+
+    let root = roots[0];
+    let res = dfs(root, graph, new Set());
+
+    if (res.cycle) {
+      totalCycles++;
       hierarchies.push({
         root,
         tree: {},
@@ -127,15 +157,9 @@ app.post("/bfhl", (req, res) => {
       continue;
     }
 
-    let root = roots[0];
-    let res = dfs(root, graph, new Set());
-
     totalTrees++;
 
-    if (
-      res.depth > maxDepth ||
-      (res.depth === maxDepth && root < largestRoot)
-    ) {
+    if (res.depth > maxDepth || (res.depth === maxDepth && root < largestRoot)) {
       maxDepth = res.depth;
       largestRoot = root;
     }
@@ -147,13 +171,17 @@ app.post("/bfhl", (req, res) => {
     });
   }
 
+  // ✅ FINAL RESPONSE
   res.json({
     user_id: "premasai_15122006",
     email_id: "p.s.chowdary15@gmail.com",
     college_roll_number: "RA2311003020233",
+
     hierarchies,
+
     invalid_entries: invalidEntries,
     duplicate_edges: duplicateEdges,
+
     summary: {
       total_trees: totalTrees,
       total_cycles: totalCycles,
@@ -162,5 +190,18 @@ app.post("/bfhl", (req, res) => {
   });
 });
 
+/* =========================
+   ROOT ROUTE (fixes Cannot GET /)
+========================= */
+app.get("/", (req, res) => {
+  res.send("BFHL API is running 🚀");
+});
+
+/* =========================
+   SERVER START (Render safe)
+========================= */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server running on port 3000"));
+
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
+});
